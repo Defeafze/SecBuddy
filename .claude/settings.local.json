@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show *)",
+      "Bash(pip install *)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Selfmade\\\\SecBuddy\\\\app\\\\pages\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Selfmade\\\\SecBuddy\\\\app\\\\utils\")",
+      "Bash(python main.py)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(Get-ChildItem -Recurse \"C:\\\\Selfmade\\\\SecBuddy\")",
+      "Bash(Select-Object FullName, Length)",
+      "Bash(python *)",
+      "Bash(findstr \"Version\")"
+    ]
+  }
+}
