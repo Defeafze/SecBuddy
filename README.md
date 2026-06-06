@@ -77,3 +77,9 @@ Beim ersten Start kannst du optionale anonyme Nutzungsstatistiken aktivieren ode
  EXIF-Entfernung für PDFs und Office-Dateien
  Erweiterte Rufnummer-Datenbank
  Hell-Modus Bugfix
+
+
+## 📄 Lizenz
+
+[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) – 
+Teilen und bearbeiten erlaubt, aber nicht für kommerzielle Zwecke.
