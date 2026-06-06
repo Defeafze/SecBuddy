@@ -14,7 +14,11 @@
       "Bash(python *)",
       "Bash(findstr \"Version\")",
       "PowerShell(Get-ChildItem *)",
-      "PowerShell(Get-Item \"C:\\\\Selfmade\\\\SecBuddy\\\\dist\\\\SecBuddy.exe\" | Select-Object Name, @{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})"
+      "PowerShell(Get-Item \"C:\\\\Selfmade\\\\SecBuddy\\\\dist\\\\SecBuddy.exe\" | Select-Object Name, @{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})",
+      "Bash(not exist *)",
+      "Bash(mkdir -p /mnt/c/Selfmade/SecBuddy/hooks)",
+      "Read(//mnt/c/Selfmade/SecBuddy/**)",
+      "Bash(Remove-Item \"C:\\\\Selfmade\\\\SecBuddy\\\\runtime_hooks\\\\debug_tcl.py\" -ErrorAction SilentlyContinue)"
     ]
   }
 }

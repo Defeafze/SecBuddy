@@ -8,7 +8,6 @@ Dokumentation: https://developers.google.com/safe-browsing/v4/lookup-api
 """
 
 import threading
-import requests
 from typing import Callable, List, Optional
 from dataclasses import dataclass, field
 
@@ -89,6 +88,7 @@ def check_url_async(
     müssen über .after(0, ...) in den Haupt-Thread delegiert werden.
     """
     def _run() -> None:
+        import requests
         # URL normalisieren: Schema hinzufügen wenn nötig
         target = url.strip()
         if not target.startswith(("http://", "https://")):

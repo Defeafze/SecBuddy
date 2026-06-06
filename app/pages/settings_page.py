@@ -13,13 +13,21 @@ from app.utils import config, i18n, consent
 _MODE_VALUES = ["Dark", "Light", "System"]
 
 
-def _restart() -> None:
+def _restart(root=None) -> None:
     """Startet die App neu — wirkt nach Theme-Wechsel sofort."""
     if getattr(sys, "frozen", False):
         args = [sys.executable]
     else:
         args = [sys.executable] + sys.argv
-    subprocess.Popen(args)
+    flags = 0
+    if sys.platform == "win32":
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+    subprocess.Popen(args, creationflags=flags)
+    if root is not None:
+        try:
+            root.destroy()
+        except Exception:
+            pass
     os._exit(0)
 
 
@@ -134,7 +142,7 @@ class SettingsPage(BasePage):
 
     def _apply_mode(self, mode: str) -> None:
         config.set("appearance_mode", mode)
-        _restart()
+        _restart(self.winfo_toplevel())
 
     def _consent_accept(self) -> None:
         consent.save(True)

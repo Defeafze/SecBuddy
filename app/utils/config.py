@@ -1,7 +1,7 @@
 """
 config.py — Persistente App-Einstellungen (API-Keys, Nutzeroptionen).
 
-Speicherort: %APPDATA%\SecBuddy\config.json  (Windows)
+Speicherort: %APPDATA%/SecBuddy/config.json  (Windows)
              ~/.config/SecBuddy/config.json   (Fallback für andere Systeme)
 
 Format: einfaches JSON-Dictionary. Keine sensiblen Daten werden unverschlüsselt

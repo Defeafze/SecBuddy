@@ -10,7 +10,6 @@ GitHub Releases API:
 """
 
 import threading
-import requests
 
 
 def check(owner: str, repo: str, current_version: str, on_update) -> None:
@@ -26,6 +25,7 @@ def check(owner: str, repo: str, current_version: str, on_update) -> None:
 
     def _worker():
         try:
+            import requests
             resp = requests.get(
                 f"https://api.github.com/repos/{owner}/{repo}/releases/latest",
                 timeout=8,

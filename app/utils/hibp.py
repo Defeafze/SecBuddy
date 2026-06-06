@@ -1,6 +1,5 @@
 import hashlib
 import threading
-import requests
 from typing import Optional, Callable
 
 
@@ -9,6 +8,7 @@ def check_password_async(
     callback: Callable[[Optional[int], Optional[str]], None],
 ) -> None:
     def _run() -> None:
+        import requests
         try:
             sha1 = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
             prefix, suffix = sha1[:5], sha1[5:]

@@ -12,7 +12,6 @@ Kostenloses Kontingent: 4 Anfragen/Minute, 500 Anfragen/Tag.
 import base64
 import threading
 import time
-import requests
 from dataclasses import dataclass
 from typing import Callable, Optional
 
@@ -64,6 +63,7 @@ def check_url_async(
     Ruft `callback(result)` im Hintergrund-Thread auf — GUI-Updates via .after(0, ...).
     """
     def _run() -> None:
+        import requests
         # URL normalisieren (Schema für VT-ID-Berechnung benötigt)
         target = url.strip()
         if not target.startswith(("http://", "https://")):
