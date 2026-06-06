@@ -3,6 +3,7 @@ import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.hibp import check_password_async
+from app.utils import monitoring
 
 
 class PasswordCheckPage(BasePage):
@@ -131,6 +132,7 @@ class PasswordCheckPage(BasePage):
         pw = self._pw_var.get().strip()
         if not pw:
             return
+        monitoring.track_action("password_check", "check_hibp")
         self._check_btn.configure(state="disabled", text="Prüfe ...")
         for w in self._result_container.winfo_children():
             w.destroy()

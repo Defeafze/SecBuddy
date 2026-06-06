@@ -2,12 +2,13 @@
 Einwilligungs-Dialog für anonyme Fehlerberichte und Nutzungsstatistiken.
 
 Die Entscheidung wird in ~/.secbuddy_consent gespeichert und beim nächsten
-Start nicht mehr abgefragt.
+Start nicht mehr abgefragt — es sei denn, sie wurde widerrufen.
 """
 
 from pathlib import Path
 import customtkinter as ctk
 from app import theme
+from app.utils import i18n
 
 _CONSENT_FILE = Path.home() / ".secbuddy_consent"
 
@@ -25,9 +26,24 @@ def is_accepted() -> bool:
         return False
 
 
+def get_status() -> str:
+    """Gibt 'accepted', 'declined' oder 'undecided' zurück."""
+    if not _CONSENT_FILE.exists():
+        return "undecided"
+    return "accepted" if is_accepted() else "declined"
+
+
 def save(accepted: bool) -> None:
     try:
         _CONSENT_FILE.write_text("yes" if accepted else "no")
+    except OSError:
+        pass
+
+
+def revoke() -> None:
+    """Löscht die gespeicherte Einwilligung, damit beim nächsten Start erneut gefragt wird."""
+    try:
+        _CONSENT_FILE.unlink(missing_ok=True)
     except OSError:
         pass
 
@@ -41,34 +57,24 @@ def show_dialog(parent: ctk.CTk) -> bool:
     result = [False]
 
     dialog = ctk.CTkToplevel(parent)
-    dialog.title("Datenschutz-Einstellung")
-    dialog.geometry("520x480")
+    dialog.title(i18n.t("consent.title"))
     dialog.resizable(False, False)
     dialog.configure(fg_color=theme.BG_MAIN)
-
-    # Zentrieren relativ zum Hauptfenster
-    parent.update_idletasks()
-    px = parent.winfo_x() + (parent.winfo_width()  - 520) // 2
-    py = parent.winfo_y() + (parent.winfo_height() - 480) // 2
-    dialog.geometry(f"520x480+{px}+{py}")
-
-    # Modal — blockiert das Hauptfenster
-    dialog.grab_set()
-    dialog.focus_force()
-    dialog.lift()
+    dialog.transient(parent)
+    dialog.withdraw()  # Zunächst versteckt — wird nach Layout-Berechnung eingeblendet
 
     inner = ctk.CTkFrame(dialog, fg_color="transparent")
     inner.pack(fill="both", expand=True, padx=32, pady=28)
 
     # ── Header ──────────────────────────────────────────────────────────────
     ctk.CTkLabel(
-        inner, text="🛡️  Kurze Frage vor dem Start",
+        inner, text=i18n.t("consent.header"),
         font=theme.FONT_TITLE, text_color=theme.TEXT_PRIMARY, anchor="w",
     ).pack(fill="x")
 
     ctk.CTkLabel(
         inner,
-        text="Darf SecBuddy anonyme Berichte senden, um besser zu werden?",
+        text=i18n.t("consent.subtitle"),
         font=theme.FONT_BODY, text_color=theme.TEXT_SECONDARY, anchor="w",
         wraplength=456, justify="left",
     ).pack(fill="x", pady=(6, 0))
@@ -78,14 +84,14 @@ def show_dialog(parent: ctk.CTk) -> bool:
     card.pack(fill="x", pady=(20, 0))
 
     ctk.CTkLabel(
-        card, text="Was würde gesendet werden:",
+        card, text=i18n.t("consent.collected"),
         font=theme.FONT_SUBHEADING, text_color=theme.TEXT_PRIMARY, anchor="w",
     ).pack(anchor="w", padx=18, pady=(14, 8))
 
     yes_items = [
-        "Fehlermeldungen bei Abstürzen — damit Bugs gefunden und behoben werden können.",
-        "Welches Tool geöffnet wurde (z. B. 'Fakeshop-Detector') — damit wir wissen, was nützlich ist.",
-        "App-Version und Betriebssystem — für die Fehlerdiagnose.",
+        i18n.t("consent.yes1"),
+        i18n.t("consent.yes2"),
+        i18n.t("consent.yes3"),
     ]
     for item in yes_items:
         row = ctk.CTkFrame(card, fg_color="transparent")
@@ -99,9 +105,9 @@ def show_dialog(parent: ctk.CTk) -> bool:
     ctk.CTkFrame(card, height=1, fg_color=theme.BORDER).pack(fill="x", padx=18, pady=(10, 8))
 
     no_items = [
-        "Eingaben wie URLs, Passwörter oder E-Mail-Adressen — niemals.",
-        "Dateinamen oder Bildinhalte — niemals.",
-        "Standort oder IP-Adresse — wird von Sentry automatisch nicht gespeichert.",
+        i18n.t("consent.no1"),
+        i18n.t("consent.no2"),
+        i18n.t("consent.no3"),
     ]
     for item in no_items:
         row = ctk.CTkFrame(card, fg_color="transparent")
@@ -116,7 +122,7 @@ def show_dialog(parent: ctk.CTk) -> bool:
 
     ctk.CTkLabel(
         inner,
-        text="Deine Entscheidung wird gespeichert und nicht erneut abgefragt.",
+        text=i18n.t("consent.saved"),
         font=theme.FONT_CAPTION, text_color=theme.TEXT_MUTED, anchor="w",
     ).pack(anchor="w", pady=(12, 0))
 
@@ -133,7 +139,7 @@ def show_dialog(parent: ctk.CTk) -> bool:
         dialog.destroy()
 
     ctk.CTkButton(
-        btn_row, text="Ja, gerne helfen  ✓", height=44,
+        btn_row, text=i18n.t("consent.accept_btn"), height=44,
         font=theme.FONT_SUBHEADING,
         fg_color=theme.ACCENT, hover_color=theme.ACCENT_HOVER,
         text_color="white", corner_radius=theme.RADIUS,
@@ -141,7 +147,7 @@ def show_dialog(parent: ctk.CTk) -> bool:
     ).pack(side="left", fill="x", expand=True, padx=(0, 8))
 
     ctk.CTkButton(
-        btn_row, text="Nein danke", height=44,
+        btn_row, text=i18n.t("consent.decline_btn"), height=44,
         font=theme.FONT_BODY,
         fg_color="transparent", hover_color=theme.BG_SURFACE,
         border_width=1, border_color=theme.BORDER,
@@ -149,6 +155,22 @@ def show_dialog(parent: ctk.CTk) -> bool:
         command=_decline,
     ).pack(side="left")
 
-    # Warten bis Dialog geschlossen
+    # ── Zentrieren und einblenden ─────────────────────────────────────────────
+    def _show_centered():
+        parent.update_idletasks()
+        dialog.update_idletasks()
+        w = 520
+        h = dialog.winfo_reqheight()   # tatsächliche Inhaltshöhe
+        h = max(h, 400)                # Mindesthöhe
+        px = max(0, parent.winfo_x() + (parent.winfo_width()  - w) // 2)
+        py = max(30, parent.winfo_y() + (parent.winfo_height() - h) // 2)
+        dialog.geometry(f"{w}x{h}+{px}+{py}")
+        dialog.deiconify()
+        dialog.grab_set()
+        dialog.focus_force()
+        dialog.lift()
+
+    dialog.after(50, _show_centered)
+
     parent.wait_window(dialog)
     return result[0]

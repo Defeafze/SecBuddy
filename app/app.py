@@ -32,6 +32,7 @@ from app.pages.sender_scanner        import SenderScannerPage
 from app.pages.exif_remover          import ExifRemoverPage
 from app.pages.home_page             import HomePage
 from app.pages.help_page             import HelpPage
+from app.pages.settings_page        import SettingsPage
 
 
 # Sidebar-Gruppen-Definition:
@@ -140,6 +141,20 @@ class SecBuddyApp(ctk.CTk):
         ctk.CTkFrame(sb, height=1, fg_color=theme.BORDER).pack(
             side="bottom", fill="x", padx=16, pady=0,
         )
+        settings_btn = ctk.CTkButton(
+            sb, text="⚙️  Einstellungen",
+            font=theme.FONT_BODY,
+            anchor="w",
+            fg_color="transparent",
+            text_color=theme.TEXT_SECONDARY,
+            hover_color=theme.BG_SURFACE,
+            corner_radius=theme.RADIUS,
+            height=40,
+            command=lambda: self.show_page("settings"),
+        )
+        settings_btn.pack(side="bottom", fill="x", padx=10, pady=(0, 2))
+        self._nav_buttons["settings"] = settings_btn
+
         btn = ctk.CTkButton(
             sb, text="❓  Hilfe",
             font=theme.FONT_BODY,
@@ -151,7 +166,7 @@ class SecBuddyApp(ctk.CTk):
             height=40,
             command=lambda: self.show_page("help"),
         )
-        btn.pack(side="bottom", fill="x", padx=10, pady=(4, 14))
+        btn.pack(side="bottom", fill="x", padx=10, pady=(4, 0))
         self._nav_buttons["help"] = btn
 
     def _make_group(
@@ -293,6 +308,7 @@ class SecBuddyApp(ctk.CTk):
             ("sender_scanner",        SenderScannerPage),
             ("exif_remover",          ExifRemoverPage),
             ("help",                  HelpPage),
+            ("settings",             SettingsPage),
         ]
         for key, PageClass in page_map:
             page = PageClass(self._content)

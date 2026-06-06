@@ -4,6 +4,7 @@ import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.strength import calculate_strength
+from app.utils import monitoring
 
 _SPECIAL = "!@#$%^&*()-_=+[]{}|;:,.<>?"
 
@@ -174,6 +175,7 @@ class PasswordGeneratorPage(BasePage):
         self._strength_label.pack(side="left")
 
     def _generate(self) -> None:
+        monitoring.track_action("password_generator", "generate")
         length = self._len_var.get()
 
         pool = list(string.ascii_lowercase)

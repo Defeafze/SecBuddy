@@ -2,6 +2,7 @@ import secrets
 import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
+from app.utils import monitoring
 
 _WORDS = sorted(set([
     "Abend", "Achse", "Ahorn", "Amsel", "Anker", "Apfel", "Atlas", "Aula", "Axt",
@@ -204,6 +205,7 @@ class PassphraseGeneratorPage(BasePage):
     def _generate(self) -> None:
         if self._sep_var is None:
             return
+        monitoring.track_action("passphrase_generator", "generate")
         count = int(self._word_count_var.get())
         sep   = self._sep_var.get()
 

@@ -3,12 +3,14 @@ from tkinter import filedialog
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.scam_analyzer import analyze_url, overall_risk, Finding
+from app.utils import monitoring
 from typing import List
 
 _QR_AVAILABLE = False
 try:
+    import cv2 as _cv2
+    import numpy as _np
     from PIL import Image as _PilImage
-    from pyzbar import pyzbar as _pyzbar
     _QR_AVAILABLE = True
 except ImportError:
     pass
@@ -155,16 +157,18 @@ class QRCheckPage(BasePage):
             return
 
         try:
-            img   = _PilImage.open(path)
-            codes = _pyzbar.decode(img)
-            if not codes:
+            pil_img = _PilImage.open(path).convert("RGB")
+            cv_img  = _cv2.cvtColor(_np.array(pil_img), _cv2.COLOR_RGB2BGR)
+            detector = _cv2.QRCodeDetector()
+            data, _, _ = detector.detectAndDecode(cv_img)
+            if not data:
                 self._scan_status.configure(
                     text="❌  Kein QR-Code im Bild erkannt — bitte URL manuell einfügen.",
                     text_color=theme.DANGER,
                 )
                 return
 
-            url = codes[0].data.decode("utf-8")
+            url   = data
             short = url[:60] + ("…" if len(url) > 60 else "")
             self._scan_status.configure(
                 text=f"✅  QR-Code erkannt: {short}",
@@ -184,7 +188,7 @@ class QRCheckPage(BasePage):
         url = self._url_entry.get().strip()
         if not url:
             return
-
+        monitoring.track_action("qr_check", "check_qr_url")
         self._clear_results()
 
         if not url.startswith(("http://", "https://", "www.")):

@@ -5,7 +5,7 @@ Was wird erfasst:
   - Unbehandelte Exceptions (Crashes) inkl. Stacktrace
   - Tkinter-interne Exceptions (werden sonst lautlos verschluckt)
   - Sessions: App-Start, Laufzeit, Version, Absturzrate
-  - Tool-Nutzung: welches Tool wann wie oft geöffnet wurde (Custom Metrics)
+  - Tool-Nutzung: Metrics (secbuddy.tool.opened / secbuddy.action.used)
 
 Was wird NICHT erfasst:
   - Nutzereingaben (URLs, Passwörter, E-Mail-Adressen)
@@ -19,12 +19,11 @@ from pathlib import Path
 
 _initialized = False
 
-# Lesbarer Anzeigename je Seiten-Key (erscheint so im Sentry-Dashboard)
 _TOOL_LABELS: dict[str, str] = {
     "home":                 "Startseite",
     "password_generator":   "Passwort-Generator",
     "passphrase_generator": "Passphrasen-Generator",
-    "password_strength":    "Passwort-Stärke",
+    "password_strength":    "Passwort-Staerke",
     "password_check":       "Passwort-Check",
     "email_check":          "E-Mail-Check",
     "phishing_check":       "URL & Absender",
@@ -35,11 +34,12 @@ _TOOL_LABELS: dict[str, str] = {
     "sender_scanner":       "Absender-Scanner",
     "exif_remover":         "EXIF entfernen",
     "help":                 "Hilfe",
+    "settings":             "Einstellungen",
 }
 
 
 def init(dsn: str, version: str) -> None:
-    """Sentry initialisieren. Vor dem Erstellen des Tk-Fensters aufrufen."""
+    """Sentry initialisieren."""
     global _initialized
     if _initialized or not dsn:
         return
@@ -51,52 +51,33 @@ def init(dsn: str, version: str) -> None:
             dsn=dsn,
             release=f"secbuddy@{version}",
             environment="production",
-
-            # Sessions: zählt App-Starts, Laufzeit, Absturzrate
             auto_session_tracking=True,
-
-            # IP-Adresse + Gerätename werden mitgesendet (für Geo-Stats)
             send_default_pii=True,
-
-            # Performance-Tracing aus (kein Bedarf, spart Quota)
             traces_sample_rate=0.0,
-
-            # HTTP-Requests aus Breadcrumbs raushalten (Datenschutz)
             before_breadcrumb=_filter_breadcrumb,
         )
 
-        # Anonyme stabile Geräte-ID → "Unique Users" im Dashboard
         sentry_sdk.set_user({"id": _device_id()})
-
-        # Tkinter-Exceptions (GUI-Callbacks) abfangen
         _hook_tkinter()
-
-        # Beim sauberen Beenden Puffer leeren (verhindert verlorene Events)
         atexit.register(sentry_sdk.flush, timeout=3)
 
         _initialized = True
 
-    except ImportError:
-        pass  # sentry-sdk nicht installiert → still ignorieren
+    except Exception:
+        pass
 
 
 def track_tool(page_key: str) -> None:
     """
-    Zählt wie oft ein Tool geöffnet wurde.
+    Trackt wie oft ein Tool geoeffnet wurde.
 
-    Erscheint in Sentry unter Explore → Metrics als Zeitreihe:
-      Metric:  secbuddy.tool.opened
-      Tag:     tool = "Passwort-Generator"
-
-    So kannst du sehen:
-      - Welches Tool heute / diese Woche am häufigsten genutzt wurde
-      - Zu welcher Uhrzeit die App am meisten genutzt wird
-      - Wie sich Nutzung nach einem Update verändert (per Release-Filter)
+    Sichtbar in Sentry unter Explore > Metrics:
+      Metric: secbuddy.tool.opened
+      Tag:    tool = "Fakeshop-Detector"
     """
     if not _initialized:
         return
-    # home + help nicht tracken — nur echte Tools
-    if page_key in ("home", "help"):
+    if page_key in ("home", "help", "settings"):
         return
     try:
         import sentry_sdk.metrics as m
@@ -106,10 +87,27 @@ def track_tool(page_key: str) -> None:
         pass
 
 
+def track_action(page_key: str, action: str) -> None:
+    """
+    Trackt wie oft eine konkrete Funktion ausgefuehrt wurde.
+
+    Sichtbar in Sentry unter Explore > Metrics:
+      Metric: secbuddy.action.used
+      Tags:   tool = "Fakeshop-Detector", action = "check_shop"
+    """
+    if not _initialized:
+        return
+    try:
+        import sentry_sdk.metrics as m
+        label = _TOOL_LABELS.get(page_key, page_key)
+        m.count("secbuddy.action.used", 1, attributes={"tool": label, "action": action})
+    except Exception:
+        pass
+
+
 # ── Hilfsfunktionen ───────────────────────────────────────────────────────────
 
 def _device_id() -> str:
-    """Liest oder erstellt eine stabile, anonyme Geräte-ID."""
     id_file = Path.home() / ".secbuddy_device_id"
     try:
         if id_file.exists():
@@ -122,10 +120,7 @@ def _device_id() -> str:
 
 
 def _hook_tkinter() -> None:
-    """
-    Überschreibt report_callback_exception: Exceptions in Button-Klicks
-    und Event-Handlern landen sonst lautlos in /dev/null.
-    """
+    """Faengt Exceptions in GUI-Callbacks ab."""
     import tkinter as tk
 
     _original = getattr(tk.Tk, "report_callback_exception", None)

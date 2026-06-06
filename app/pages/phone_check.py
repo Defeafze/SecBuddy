@@ -7,10 +7,12 @@ Alle Checks laufen lokal — keine Daten werden gesendet.
 """
 
 import re
+import webbrowser
 from typing import List, Tuple
 import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
+from app.utils import monitoring
 
 
 # ── Daten ─────────────────────────────────────────────────────────────────────
@@ -124,9 +126,10 @@ def analyze_number(raw: str) -> List[dict]:
         "title":    "Auf Tellows.de nachschlagen",
         "detail":   (
             "Tellows.de ist eine Community-Datenbank für verdächtige Rufnummern. "
-            "Gib die Nummer dort ein um zu sehen, ob andere Nutzer sie als Betrug gemeldet haben."
+            "Klicke auf 'Tellows öffnen' um zu sehen, ob andere Nutzer diese Nummer als Betrug gemeldet haben."
         ),
         "severity": "info",
+        "tellows":  True,
     })
     findings.append({
         "icon":     "🔵",
@@ -239,7 +242,9 @@ class PhoneCheckPage(BasePage):
         num = self._num_var.get().strip()
         if not num:
             return
+        monitoring.track_action("phone_check", "check_number")
         self._clear_results()
+        self._last_num = num
         findings = analyze_number(num)
         self._show_results(findings, num)
 
@@ -305,7 +310,19 @@ class PhoneCheckPage(BasePage):
             card, text=f["detail"],
             font=theme.FONT_SMALL, text_color=theme.TEXT_SECONDARY,
             anchor="w", justify="left", wraplength=620,
-        ).pack(anchor="w", padx=16, pady=(0, 12))
+        ).pack(anchor="w", padx=16, pady=(0, 8))
+        if f.get("tellows"):
+            num_clean = re.sub(r"[\s\-().\/]", "", getattr(self, "_last_num", ""))
+            ctk.CTkButton(
+                card, text="Tellows öffnen  →", height=32, width=170,
+                font=theme.FONT_SMALL,
+                fg_color="transparent", hover_color=theme.BG_MAIN,
+                border_width=1, border_color=theme.ACCENT,
+                text_color=theme.ACCENT, corner_radius=theme.RADIUS,
+                command=lambda n=num_clean: webbrowser.open(f"https://www.tellows.de/num/{n}"),
+            ).pack(anchor="w", padx=16, pady=(0, 12))
+        else:
+            ctk.CTkFrame(card, fg_color="transparent", height=4).pack()
 
     def _clear(self) -> None:
         self._num_entry.delete(0, "end")

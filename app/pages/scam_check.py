@@ -2,6 +2,7 @@ import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.scam_analyzer import analyze_url, analyze_text, overall_risk, _extract_urls, Finding
+from app.utils import monitoring
 from typing import List
 
 _SEVERITY_ICON  = {"high": "🔴", "medium": "🟠", "low": "🟡", "info": "🔵"}
@@ -128,7 +129,7 @@ class ScamCheckPage(BasePage):
         raw = self._text_box.get("1.0", "end").strip()
         if not raw:
             return
-
+        monitoring.track_action("scam_check", "scan_text")
         self._clear_results()
 
         urls = _extract_urls(raw)

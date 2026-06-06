@@ -12,6 +12,7 @@ import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.fakeshop_analyzer import Finding, _BRANDS, _RISKY_TLDS, _norm, _root_domain
+from app.utils import monitoring
 
 
 # Bekannte kostenlose E-Mail-Anbieter.
@@ -241,6 +242,7 @@ class SenderScannerPage(BasePage):
         addr = self._addr_var.get().strip()
         if not addr:
             return
+        monitoring.track_action("sender_scanner", "scan_sender")
         self._clear_results()
         findings = analyze_sender(addr)
         self._show_results(findings, addr)

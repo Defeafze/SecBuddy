@@ -123,6 +123,38 @@ class HomePage(BasePage):
         inner = ctk.CTkFrame(scroll, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=36, pady=28)
 
+        # ── Haftungsausschluss ───────────────────────────────────────────────
+        disclaimer = ctk.CTkFrame(
+            inner,
+            fg_color="#1c0a09",
+            corner_radius=theme.RADIUS,
+            border_width=2, border_color=theme.DANGER,
+        )
+        disclaimer.pack(fill="x", pady=(0, 20))
+
+        disc_inner = ctk.CTkFrame(disclaimer, fg_color="transparent")
+        disc_inner.pack(fill="x", padx=20, pady=16)
+
+        ctk.CTkLabel(
+            disc_inner,
+            text="⚠️  WICHTIGER HINWEIS — Kein Ersatz für professionelle Sicherheitsberatung",
+            font=("Segoe UI", 13, "bold"), text_color=theme.DANGER, anchor="w",
+        ).pack(fill="x")
+
+        ctk.CTkFrame(disc_inner, height=1, fg_color="#7f1d1d").pack(fill="x", pady=(8, 10))
+
+        ctk.CTkLabel(
+            disc_inner,
+            text=(
+             """    SecBuddy arbeitet mit heuristischen Algorithmen und öffentlichen Datenbanken. 
+                Das Tool kann Fehler machen — sowohl False Positives (harmlose Inhalte als gefährlich markiert) 
+                als auch False Negatives (echte Bedrohungen nicht erkannt). """
+                
+            ),
+            font=theme.FONT_SMALL, text_color="#fca5a5",
+            anchor="w", justify="left", wraplength=720,
+        ).pack(fill="x")
+
         # ── Update-Banner (anfangs versteckt) ────────────────────────────────
         self._update_banner = ctk.CTkFrame(
             inner,

@@ -10,6 +10,7 @@ import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
 from app.utils.strength import calculate_strength
+from app.utils import monitoring
 
 
 # Farben für die Kriterien-Checkboxen
@@ -21,6 +22,7 @@ class PasswordStrengthPage(BasePage):
     def __init__(self, parent: ctk.CTkFrame) -> None:
         super().__init__(parent)
         self._shown = False
+        self._tracked = False
         self._build()
 
     def _build(self) -> None:
@@ -176,12 +178,16 @@ class PasswordStrengthPage(BasePage):
     def _analyze(self) -> None:
         pw = self._pw_var.get()
         if not pw:
+            self._tracked = False
             self._strength_bar.set(0)
             self._strength_bar.configure(progress_color=theme.TEXT_MUTED)
             self._strength_label.configure(text="—", text_color=theme.TEXT_MUTED)
             for key in self._crit_labels:
                 self._set_crit(key, False)
             return
+        if not self._tracked:
+            self._tracked = True
+            monitoring.track_action("password_strength", "analyze")
 
         score, label, color = calculate_strength(pw)
         self._strength_bar.set((score + 1) / 5)

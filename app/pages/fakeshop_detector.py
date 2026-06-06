@@ -15,7 +15,7 @@ from app.pages.base_page import BasePage
 from app.utils.fakeshop_analyzer import analyze_shop_url, overall_risk, Finding
 from app.utils.whois_check import check_domain_age_async
 from app.utils.virustotal import check_url_async as vt_check_url_async, VTResult
-from app.utils import config
+from app.utils import config, monitoring
 from typing import List, Optional
 
 _SEVERITY_ICON: dict = {
@@ -282,7 +282,7 @@ class FakeshopDetectorPage(BasePage):
         url = self._url_var.get().strip()
         if not url:
             return
-
+        monitoring.track_action("fakeshop_detector", "check_shop")
         # Neue Generation → laufende Phasen-2/3-Callbacks von vorherigem Check werden verworfen
         self._check_gen += 1
         current_gen = self._check_gen

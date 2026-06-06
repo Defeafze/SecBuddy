@@ -2,6 +2,7 @@ import webbrowser
 import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
+from app.utils import monitoring
 
 
 class EmailCheckPage(BasePage):
@@ -140,6 +141,7 @@ class EmailCheckPage(BasePage):
         self._help_button(inner, "account").pack(fill="x", pady=(20, 0))
 
     def _open_browser(self) -> None:
+        monitoring.track_action("email_check", "open_hibp")
         email = self._email_var.get().strip()
         url = f"https://haveibeenpwned.com/?q={email}" if email else "https://haveibeenpwned.com"
         webbrowser.open(url)

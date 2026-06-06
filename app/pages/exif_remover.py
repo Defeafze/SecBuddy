@@ -3,7 +3,7 @@ from tkinter import filedialog
 import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
-from app.utils import exif_strip
+from app.utils import exif_strip, monitoring
 
 
 class ExifRemoverPage(BasePage):
@@ -257,6 +257,7 @@ class ExifRemoverPage(BasePage):
     def _strip_and_save(self) -> None:
         if not self._image_path:
             return
+        monitoring.track_action("exif_remover", "strip_exif")
 
         try:
             with open(self._image_path, 'rb') as f:
