@@ -6,11 +6,18 @@ Hover über eine Gruppe klappt die Unterseiten auf; die aktive Gruppe bleibt
 dauerhaft geöffnet bis eine andere Gruppe navigiert wird.
 """
 
+import sys
+import pathlib
 from typing import Optional
 import customtkinter as ctk
+from PIL import Image as PilImage
 from app import theme
 from app import config
 from app.utils import monitoring, updater
+
+# Im PyInstaller-Bundle liegen Datendateien unter sys._MEIPASS
+_BASE   = pathlib.Path(sys._MEIPASS) if getattr(sys, "frozen", False) else pathlib.Path(__file__).parent.parent
+_ASSETS = _BASE / "assets"
 from app.pages.password_check        import PasswordCheckPage
 from app.pages.password_generator    import PasswordGeneratorPage
 from app.pages.passphrase_generator  import PassphraseGeneratorPage
@@ -63,6 +70,11 @@ class SecBuddyApp(ctk.CTk):
         self.minsize(840, 560)
         self.configure(fg_color=theme.BG_MAIN)
 
+        # Taskleisten- und Titelleisten-Icon
+        _ico = _ASSETS / "icon.ico"
+        if _ico.exists():
+            self.iconbitmap(str(_ico))
+
         self._pages: dict        = {}
         self._nav_buttons: dict  = {}   # page_key → CTkButton
         self._group_meta: list   = []   # Dicts mit expand/collapse/keys pro Gruppe
@@ -86,13 +98,27 @@ class SecBuddyApp(ctk.CTk):
 
         # Logo — klickbar zum Navigieren zur Startseite
         logo = ctk.CTkFrame(sb, fg_color="transparent", cursor="hand2")
-        logo.pack(fill="x", padx=18, pady=(22, 0))
+        logo.pack(fill="x", padx=18, pady=(16, 0))
+
+        logo_row = ctk.CTkFrame(logo, fg_color="transparent")
+        logo_row.pack(fill="x")
+
+        _logo_png = _ASSETS / "logo.png"
+        if _logo_png.exists():
+            _ctk_img = ctk.CTkImage(
+                light_image=PilImage.open(_logo_png),
+                dark_image=PilImage.open(_logo_png),
+                size=(36, 36),
+            )
+            img_lbl = ctk.CTkLabel(logo_row, image=_ctk_img, text="")
+            img_lbl.pack(side="left", padx=(0, 8))
+            img_lbl.bind("<Button-1>", lambda _e: self.show_page("home"))
 
         title_lbl = ctk.CTkLabel(
-            logo, text="🛡️ SecBuddy",
+            logo_row, text="SecBuddy",
             font=theme.FONT_TITLE, text_color=theme.ACCENT, anchor="w",
         )
-        title_lbl.pack(fill="x")
+        title_lbl.pack(side="left", fill="x", expand=True)
 
         sub_lbl = ctk.CTkLabel(
             logo, text="Dein Sicherheits-Assistent",
@@ -101,7 +127,7 @@ class SecBuddyApp(ctk.CTk):
         sub_lbl.pack(fill="x", pady=(2, 0))
 
         # Klick auf Logo öffnet Startseite
-        for w in (logo, title_lbl, sub_lbl):
+        for w in (logo, logo_row, title_lbl, sub_lbl):
             w.bind("<Button-1>", lambda _e: self.show_page("home"))
 
         ctk.CTkFrame(sb, height=1, fg_color=theme.BORDER).pack(fill="x", padx=16, pady=16)

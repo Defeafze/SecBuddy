@@ -10,5 +10,5 @@ SENTRY_DSN = "https://1ffe7b7d022c6d0043c36cdce21fd87d@o4511515261009920.ingest.
 
 # GitHub-Repository für Update-Prüfung
 # Releases: github.com/GITHUB_OWNER/GITHUB_REPO/releases
-GITHUB_OWNER = ""        # z. B. "devin-fellhauer"
+GITHUB_OWNER = "Defeafze"
 GITHUB_REPO  = "SecBuddy"

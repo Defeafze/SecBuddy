@@ -12,7 +12,9 @@
       "Bash(Get-ChildItem -Recurse \"C:\\\\Selfmade\\\\SecBuddy\")",
       "Bash(Select-Object FullName, Length)",
       "Bash(python *)",
-      "Bash(findstr \"Version\")"
+      "Bash(findstr \"Version\")",
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(Get-Item \"C:\\\\Selfmade\\\\SecBuddy\\\\dist\\\\SecBuddy.exe\" | Select-Object Name, @{N='MB';E={[math]::Round\\($_.Length/1MB,1\\)}})"
     ]
   }
 }
