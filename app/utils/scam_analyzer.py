@@ -55,13 +55,19 @@ _BRANDS = [
 _LOOKALIKES = str.maketrans("01345@!", "oieasai")
 
 _URGENCY_PATTERNS = [
-    r"sofort", r"dringend", r"unverzüglich", r"innerhalb von \d+",
+    r"sofort", r"dringend", r"unverzüglich",
+    r"innerhalb (von |der nächsten )?\d+",
     r"heute noch", r"jetzt handeln", r"umgehend", r"letzter tag",
     r"läuft ab", r"abläuft", r"frist", r"nur noch \d+",
+    r"schnelle(n)? rückmeldung", r"zeitnah",
 ]
 _THREAT_PATTERNS = [
-    r"konto (wurde |ist |wird )?gesperrt",
-    r"konto (wurde |ist |wird )?blockiert",
+    r"konto (wurde |ist |wird )?(gesperrt|blockiert|eingeschränkt)",
+    r"(zugang|zugriff|konto).{0,40}(gesperrt|blockiert|eingeschränkt|deaktiviert)",
+    r"sperrung", r"vorübergehend eingeschränkt",
+    r"ungewöhnliche.{0,20}(anmeldung|aktivität|zugriff)",
+    r"verdächtige.{0,20}(aktivität|anmeldung|transaktion)",
+    r"sicherheitsproblem", r"sicherheitswarnung",
     r"polizei", r"strafanzeige", r"gericht", r"klage",
     r"verhaftet", r"illegal", r"inkasso", r"mahnbescheid",
 ]
@@ -72,9 +78,12 @@ _PRIZE_PATTERNS = [
 ]
 _DATA_PATTERNS = [
     r"(ihre?|deine?) (zugangsdaten|passwort|pin|tan|iban|kreditkarte)",
-    r"konto bestätigen", r"identität (bestätigen|verifizieren)",
+    r"konto bestätigen",
+    r"identität.{0,30}(bestätigen|verifizieren)",
+    r"(bestätigen|verifizieren).{0,30}identität",
     r"daten (aktualisieren|bestätigen|eingeben)",
     r"klicken sie (auf den link|hier)", r"link folgen",
+    r"(konto|zugang|zugriff).{0,20}bestätigen",
 ]
 _PACKAGE_PATTERNS = [
     r"(ihr?|dein) paket (konnte|kann) nicht",

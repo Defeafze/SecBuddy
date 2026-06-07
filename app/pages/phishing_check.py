@@ -5,11 +5,12 @@ Analysiert eine URL auf bekannte Phishing- und Betrugsmerkmale.
 Keine Daten werden an externe Server gesendet.
 """
 
+import threading
 import customtkinter as ctk
 from app import theme
 from app.pages.base_page import BasePage
-from app.utils.scam_analyzer import analyze_url, overall_risk, Finding
-from app.utils import monitoring
+from app.utils.scam_analyzer import analyze_url, analyze_text, overall_risk, Finding
+from app.utils import monitoring, ml_classifier
 from typing import List
 
 
@@ -110,6 +111,75 @@ class PhishingCheckPage(BasePage):
             command=self._clear,
         ).pack(side="left", padx=(8, 0))
 
+        # ── Trennlinie ───────────────────────────────────────────────────────
+        sep_frame = ctk.CTkFrame(inner, fg_color="transparent")
+        sep_frame.pack(fill="x", pady=(20, 0))
+        ctk.CTkFrame(sep_frame, fg_color=theme.BORDER, height=1).pack(
+            fill="x", side="left", expand=True, padx=(0, 12), pady=8
+        )
+        ctk.CTkLabel(
+            sep_frame, text="ODER", font=theme.FONT_SMALL,
+            text_color=theme.TEXT_MUTED,
+        ).pack(side="left")
+        ctk.CTkFrame(sep_frame, fg_color=theme.BORDER, height=1).pack(
+            fill="x", side="left", expand=True, padx=(12, 0), pady=8
+        )
+
+        # ── Text-Analyse (KI-Modell) ─────────────────────────────────────────
+        text_card = ctk.CTkFrame(inner, fg_color=theme.BG_SURFACE, corner_radius=theme.RADIUS)
+        text_card.pack(fill="x", pady=(16, 0))
+
+        ctk.CTkLabel(
+            text_card, text="E-Mail oder Nachricht analysieren  (KI-gestützt)",
+            font=theme.FONT_SUBHEADING, text_color=theme.TEXT_PRIMARY, anchor="w",
+        ).pack(anchor="w", padx=18, pady=(14, 2))
+
+        ctk.CTkLabel(
+            text_card,
+            text="Füge den Inhalt einer verdächtigen Nachricht ein. "
+                 "Beim ersten Start wird ein KI-Modell einmalig heruntergeladen (~400 MB).",
+            font=theme.FONT_SMALL, text_color=theme.TEXT_MUTED,
+            anchor="w", wraplength=620, justify="left",
+        ).pack(anchor="w", padx=18, pady=(0, 8))
+
+        self._text_box = ctk.CTkTextbox(
+            text_card,
+            height=120,
+            font=theme.FONT_BODY,
+            fg_color=theme.BG_MAIN,
+            border_color=theme.BORDER,
+            border_width=1,
+            text_color=theme.TEXT_PRIMARY,
+            corner_radius=theme.RADIUS,
+        )
+        self._text_box.pack(fill="x", padx=18, pady=(0, 10))
+
+        text_btn_row = ctk.CTkFrame(text_card, fg_color="transparent")
+        text_btn_row.pack(fill="x", padx=18, pady=(0, 16))
+
+        ctk.CTkButton(
+            text_btn_row, text="Analysieren  →", height=42,
+            font=theme.FONT_SUBHEADING,
+            fg_color=theme.ACCENT, hover_color=theme.ACCENT_HOVER,
+            text_color="white", corner_radius=theme.RADIUS,
+            command=self._run_text_check,
+        ).pack(side="left")
+
+        ctk.CTkButton(
+            text_btn_row, text="Leeren", height=42, width=90,
+            font=theme.FONT_BODY,
+            fg_color="transparent", hover_color=theme.BG_SURFACE,
+            border_width=1, border_color=theme.BORDER,
+            text_color=theme.TEXT_MUTED, corner_radius=theme.RADIUS,
+            command=self._clear_text,
+        ).pack(side="left", padx=(8, 0))
+
+        self._text_status_label = ctk.CTkLabel(
+            text_btn_row, text="", font=theme.FONT_SMALL,
+            text_color=theme.TEXT_MUTED, anchor="w",
+        )
+        self._text_status_label.pack(side="left", padx=(14, 0))
+
         # ── Ergebnis-Container ───────────────────────────────────────────────
         self._result_area = ctk.CTkFrame(inner, fg_color="transparent")
 
@@ -187,8 +257,61 @@ class PhishingCheckPage(BasePage):
             anchor="w", justify="left", wraplength=620,
         ).pack(anchor="w", padx=16, pady=(0, 12))
 
+    def _run_text_check(self) -> None:
+        text = self._text_box.get("1.0", "end").strip()
+        if not text:
+            return
+        monitoring.track_action("phishing_check", "check_text")
+        self._clear_results()
+
+        if ml_classifier.is_unavailable():
+            findings = analyze_text(text)
+            self._show_results(findings)
+            return
+
+        status_msg = (
+            "Modell wird geladen (einmalig) …"
+            if not ml_classifier.is_loaded()
+            else "Analysiere …"
+        )
+        self._text_status_label.configure(text=status_msg)
+
+        def worker():
+            findings = analyze_text(text)
+            ml_result = ml_classifier.classify(text)
+
+            if ml_result:
+                label = ml_result.get("label", "").lower()
+                score = ml_result.get("score", 0.0)
+                if "phishing" in label and score >= 0.85:
+                    findings.insert(0, Finding(
+                        "high",
+                        f"KI-Erkennung: Phishing ({score:.0%} Konfidenz)",
+                        "Ein KI-Modell (BERT) hat diese Nachricht mit hoher Wahrscheinlichkeit "
+                        "als Phishing eingestuft.",
+                    ))
+                elif "phishing" in label and score >= 0.55:
+                    findings.insert(0, Finding(
+                        "medium",
+                        f"KI-Erkennung: Möglicherweise Phishing ({score:.0%} Konfidenz)",
+                        "Ein KI-Modell stuft diese Nachricht als möglicherweise verdächtig ein.",
+                    ))
+
+            self.after(0, lambda: self._finish_text_check(findings))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _finish_text_check(self, findings: List[Finding]) -> None:
+        self._text_status_label.configure(text="")
+        self._show_results(findings)
+
     def _clear(self) -> None:
         self._url_entry.delete(0, "end")
+        self._clear_results()
+
+    def _clear_text(self) -> None:
+        self._text_box.delete("1.0", "end")
+        self._text_status_label.configure(text="")
         self._clear_results()
 
     def _clear_results(self) -> None:

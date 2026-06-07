@@ -97,11 +97,16 @@ class PasswordStrengthPage(BasePage):
             top, text="Stärke:",
             font=theme.FONT_SUBHEADING, text_color=theme.TEXT_SECONDARY, anchor="w",
         ).pack(side="left")
+        self._entropy_label = ctk.CTkLabel(
+            top, text="",
+            font=theme.FONT_SMALL, text_color=theme.TEXT_MUTED,
+        )
+        self._entropy_label.pack(side="right")
         self._strength_label = ctk.CTkLabel(
             top, text="—",
             font=theme.FONT_SUBHEADING, text_color=theme.TEXT_MUTED,
         )
-        self._strength_label.pack(side="right")
+        self._strength_label.pack(side="right", padx=(0, 16))
 
         self._strength_bar = ctk.CTkProgressBar(
             strength_card, height=10,
@@ -182,6 +187,7 @@ class PasswordStrengthPage(BasePage):
             self._strength_bar.set(0)
             self._strength_bar.configure(progress_color=theme.TEXT_MUTED)
             self._strength_label.configure(text="—", text_color=theme.TEXT_MUTED)
+            self._entropy_label.configure(text="")
             for key in self._crit_labels:
                 self._set_crit(key, False)
             return
@@ -189,10 +195,12 @@ class PasswordStrengthPage(BasePage):
             self._tracked = True
             monitoring.track_action("password_strength", "analyze")
 
-        score, label, color = calculate_strength(pw)
-        self._strength_bar.set((score + 1) / 5)
+        score, label, color, entropy = calculate_strength(pw)
+        # Progress-Bar: 128 Bit = volle Balken, danach gekappt
+        self._strength_bar.set(min(entropy / 128, 1.0))
         self._strength_bar.configure(progress_color=color)
         self._strength_label.configure(text=label, text_color=color)
+        self._entropy_label.configure(text=f"{entropy:.1f} Bit", text_color=color)
 
         # Kriterien auswerten
         has_lower   = any(c.islower()            for c in pw)

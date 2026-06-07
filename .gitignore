@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# PyInstaller
+build/
+dist/
+*.spec.bak
+
+# Abhängigkeiten / virtuelle Umgebungen
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.claude/
+
+# Laufzeit / Konfiguration (nutzerspezifisch, nicht ins Repo)
+config.json
+user_config.json
+
+# KI-Modell-Cache (wird beim ersten Start heruntergeladen)
+.cache/huggingface/
+models/
+
+# Logs
+*.log

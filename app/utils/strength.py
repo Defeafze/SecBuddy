@@ -1,36 +1,43 @@
+import math
 import string
 from typing import Tuple
 
 
-def calculate_strength(password: str) -> Tuple[int, str, str]:
-    """Returns (score 0–4, label, hex color)."""
-    score = 0
+def _pool_size(password: str) -> int:
+    pool = 0
+    if any(c.islower() for c in password):
+        pool += 26
+    if any(c.isupper() for c in password):
+        pool += 26
+    if any(c.isdigit() for c in password):
+        pool += 10
+    if any(c in string.punctuation for c in password):
+        pool += 32
+    if any(ord(c) > 127 for c in password):
+        pool += 128
+    return max(pool, 1)
 
-    if len(password) >= 12:
-        score += 1
-    if len(password) >= 16:
-        score += 1
 
-    variety = sum([
-        any(c.islower() for c in password),
-        any(c.isupper() for c in password),
-        any(c.isdigit() for c in password),
-        any(c in string.punctuation for c in password),
-    ])
-    if variety >= 2:
-        score += 1
-    if variety >= 4:
-        score += 1
+def calculate_entropy(password: str) -> float:
+    """Brute-Force-Entropie in Bit: log2(pool_size) × Länge."""
+    if not password:
+        return 0.0
+    return math.log2(_pool_size(password)) * len(password)
 
-    score = min(4, score)
 
-    levels = [
-        "Sehr schwach", "#ef4444",
-        "Schwach",      "#f97316",
-        "Mittel",       "#f59e0b",
-        "Stark",        "#22c55e",
-        "Sehr stark",   "#22c55e",
-    ]
-    label = levels[score * 2]
-    color = levels[score * 2 + 1]
-    return score, label, color
+def calculate_strength(password: str) -> Tuple[int, str, str, float]:
+    """Returns (score 0–4, label, hex color, entropy_bits)."""
+    entropy = calculate_entropy(password)
+
+    if entropy < 40:
+        score, label, color = 0, "Sehr schwach", "#ef4444"
+    elif entropy < 60:
+        score, label, color = 1, "Schwach",      "#f97316"
+    elif entropy < 80:
+        score, label, color = 2, "Mittel",       "#f59e0b"
+    elif entropy < 128:
+        score, label, color = 3, "Stark",        "#22c55e"
+    else:
+        score, label, color = 4, "Sehr stark",   "#22c55e"
+
+    return score, label, color, entropy

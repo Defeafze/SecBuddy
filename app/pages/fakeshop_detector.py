@@ -14,6 +14,7 @@ from app import theme
 from app.pages.base_page import BasePage
 from app.utils.fakeshop_analyzer import analyze_shop_url, overall_risk, Finding
 from app.utils.whois_check import check_domain_age_async
+from app.utils.impressum_check import check_legal_pages_async
 from app.utils.virustotal import check_url_async as vt_check_url_async, VTResult
 from app.utils import config, monitoring
 from typing import List, Optional
@@ -36,9 +37,10 @@ class FakeshopDetectorPage(BasePage):
     def __init__(self, parent: ctk.CTkFrame) -> None:
         super().__init__(parent)
         self._vt_key: str = config.get("virustotal_key", "")
-        # Ein gemeinsamer Generationszähler für alle async-Phasen dieser Seite.
-        # Wird beim Start jeder neuen Prüfung erhöht — veraltete Callbacks verwerfen sich selbst.
         self._check_gen: int = 0
+        self._all_findings: List[Finding] = []
+        self._risk_label = None
+        self._risk_bar   = None
         self._build()
 
     def _build(self) -> None:
@@ -101,8 +103,9 @@ class FakeshopDetectorPage(BasePage):
             method_card,
             text=(
                 "① Sofort lokal: Domainname, Verschlüsselung, Marken-Imitation und Betrugs-Muster.\n"
-                "② Im Hintergrund: WHOIS — wie lange ist die Domain schon registriert?\n"
-                "③ Optional: VirusTotal — über 70 Sicherheits-Engines prüfen die URL (API Key nötig)."
+                "② Im Hintergrund: WHOIS — Alter der Domain, Inhaber und Registrar.\n"
+                "③ Im Hintergrund: Impressum-Check — Pflichtseiten vorhanden? Firma erkennbar?\n"
+                "④ Optional: VirusTotal — über 70 Sicherheits-Engines prüfen die URL (API Key nötig)."
             ),
             font=theme.FONT_SMALL, text_color=theme.TEXT_SECONDARY,
             justify="left", anchor="w", wraplength=660,
@@ -292,12 +295,16 @@ class FakeshopDetectorPage(BasePage):
 
         # Phase 1: lokale Heuristik (synchron, sofort sichtbar)
         heuristic_findings = analyze_shop_url(url)
+        self._all_findings = list(heuristic_findings)
         self._show_heuristic_results(heuristic_findings, url)
 
         # Phase 2: WHOIS (async)
         self._start_whois_phase(domain, current_gen)
 
-        # Phase 3: VirusTotal (async, nur wenn Key konfiguriert)
+        # Phase 3: Impressum / Pflichtseiten / Firma (async)
+        self._start_impressum_phase(url, current_gen)
+
+        # Phase 4: VirusTotal (async, nur wenn Key konfiguriert)
         if self._vt_key:
             self._start_vt_phase(url, current_gen)
 
@@ -325,17 +332,18 @@ class FakeshopDetectorPage(BasePage):
             top, text="Gesamteinschätzung:",
             font=theme.FONT_SUBHEADING, text_color=theme.TEXT_SECONDARY, anchor="w",
         ).pack(side="left")
-        ctk.CTkLabel(
+        self._risk_label = ctk.CTkLabel(
             top, text=label,
             font=theme.FONT_SUBHEADING, text_color=color,
-        ).pack(side="right")
+        )
+        self._risk_label.pack(side="right")
 
-        bar = ctk.CTkProgressBar(
+        self._risk_bar = ctk.CTkProgressBar(
             risk_card, height=8,
             progress_color=color, fg_color=theme.BORDER, corner_radius=4,
         )
-        bar.pack(fill="x", padx=18, pady=(0, 14))
-        bar.set(progress)
+        self._risk_bar.pack(fill="x", padx=18, pady=(0, 14))
+        self._risk_bar.set(progress)
 
         warnings = [f for f in findings if f.severity != "info"]
         tips     = [f for f in findings if f.severity == "info"]
@@ -393,23 +401,60 @@ class FakeshopDetectorPage(BasePage):
         self._destroy_if_exists(self._whois_header)
 
         if error:
-            lbl = ctk.CTkLabel(
-                self._result_area, text="Domain-Alter",
-                font=theme.FONT_SUBHEADING, text_color=theme.TEXT_MUTED, anchor="w",
-            )
-            lbl.pack(anchor="w", pady=(12, 6))
-            err = self._loading_card(f"ℹ️  WHOIS nicht verfügbar: {error}")
-            return
-
-        if findings:
             ctk.CTkLabel(
                 self._result_area, text="Domain-Alter",
-                font=theme.FONT_SUBHEADING, text_color=theme.TEXT_SECONDARY, anchor="w",
+                font=theme.FONT_SUBHEADING, text_color=theme.TEXT_MUTED, anchor="w",
             ).pack(anchor="w", pady=(12, 6))
-            for f in findings:
-                self._finding_card(f)
+            self._loading_card(f"ℹ️  WHOIS nicht verfügbar: {error}")
+            return
 
-    # ── Phase 3: VirusTotal ───────────────────────────────────────────────────
+        self._update_overall_risk(findings)
+
+        ctk.CTkLabel(
+            self._result_area, text="Domain-Alter & Inhaber",
+            font=theme.FONT_SUBHEADING, text_color=theme.TEXT_SECONDARY, anchor="w",
+        ).pack(anchor="w", pady=(12, 6))
+        for f in findings:
+            self._finding_card(f)
+
+    # ── Phase 3: Impressum / Pflichtseiten ───────────────────────────────────
+
+    def _start_impressum_phase(self, url: str, gen: int) -> None:
+        self._imp_header = ctk.CTkLabel(
+            self._result_area, text="Impressum & Pflichtseiten (wird geprüft …)",
+            font=theme.FONT_SUBHEADING, text_color=theme.TEXT_MUTED, anchor="w",
+        )
+        self._imp_header.pack(anchor="w", pady=(12, 6))
+        self._imp_placeholder = self._loading_card(
+            "🔎  Impressum, Datenschutz, AGB und Widerrufsbelehrung werden geprüft …"
+        )
+
+        def on_done(findings, error):
+            self.after(0, lambda: self._on_impressum_result(findings, error, gen))
+
+        check_legal_pages_async(url, on_done)
+
+    def _on_impressum_result(self, findings, error: Optional[str], gen: int) -> None:
+        if gen != self._check_gen:
+            return
+        self._destroy_if_exists(self._imp_placeholder)
+        self._destroy_if_exists(self._imp_header)
+
+        ctk.CTkLabel(
+            self._result_area, text="Impressum & Pflichtseiten",
+            font=theme.FONT_SUBHEADING, text_color=theme.TEXT_SECONDARY, anchor="w",
+        ).pack(anchor="w", pady=(12, 6))
+
+        if error:
+            self._loading_card(f"ℹ️  Impressum-Check nicht möglich: {error}")
+            return
+
+        self._update_overall_risk(findings)
+
+        for f in findings:
+            self._finding_card(f)
+
+    # ── Phase 4: VirusTotal ───────────────────────────────────────────────────
 
     def _start_vt_phase(self, url: str, gen: int) -> None:
         """Fügt VirusTotal-Ladeanzeige ein und startet den VT-Thread."""
@@ -507,6 +552,21 @@ class FakeshopDetectorPage(BasePage):
                 stats_row, text=f"{label}: {count}",
                 font=theme.FONT_CAPTION, text_color=clr,
             ).pack(side="left", padx=(0, 16))
+
+    # ── Gesamtrisiko aktualisieren ────────────────────────────────────────────
+
+    def _update_overall_risk(self, new_findings: List[Finding]) -> None:
+        """Ergänzt self._all_findings und aktualisiert Label + Balken der Risikokarte."""
+        self._all_findings.extend(new_findings)
+        label, color, progress = overall_risk(self._all_findings)
+        try:
+            if self._risk_label.winfo_exists():
+                self._risk_label.configure(text=label, text_color=color)
+            if self._risk_bar.winfo_exists():
+                self._risk_bar.configure(progress_color=color)
+                self._risk_bar.set(progress)
+        except Exception:
+            pass
 
     # ── Hilfsmethoden ────────────────────────────────────────────────────────
 

@@ -201,9 +201,9 @@ class PasswordGeneratorPage(BasePage):
         self._pw_display.insert(0, pw)
         self._pw_display.configure(state="readonly")
 
-        score, label, color = calculate_strength(pw)
+        score, label, color, entropy = calculate_strength(pw)
         self._strength_bar.configure(progress_color=color)
-        self._strength_bar.set((score + 1) / 5)
+        self._strength_bar.set(min(entropy / 128, 1.0))
         self._strength_label.configure(text=label, text_color=color)
 
         self._copy_btn.configure(text="📋  Kopieren", text_color=theme.TEXT_SECONDARY)

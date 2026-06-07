@@ -283,13 +283,7 @@ def analyze_shop_url(raw_url: str) -> List[Finding]:
 
 
 def _append_tips(findings: List[Finding]) -> None:
-    """Hängt die drei Standard-Prüftipps an die Findings-Liste an."""
-    findings.append(Finding(
-        "info",
-        "Impressum prüfen",
-        "Jeder seriöse deutsche Online-Shop ist gesetzlich zu einem Impressum verpflichtet. "
-        "Fehlt es, sind die Angaben vage oder ist die Adresse nicht nachprüfbar, ist das ein starkes Warnsignal.",
-    ))
+    """Hängt die Standard-Prüftipps an die Findings-Liste an."""
     findings.append(Finding(
         "info",
         "Bewertungen prüfen",
